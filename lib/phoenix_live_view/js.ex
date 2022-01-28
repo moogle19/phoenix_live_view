@@ -445,6 +445,54 @@ defmodule Phoenix.LiveView.JS do
     })
   end
 
+   @doc """
+  Toggles classes from elements.
+
+    * `names` - The string of classes to toggle.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to toggle classes from.
+      Defaults to the interacted element.
+    * `:transition` - The string of classes to apply before toggling classes or
+      a 3-tuple containing the transition class, the class to apply
+      to start the transition, and the ending transition class, such as:
+      `{"ease-out duration-300", "opacity-0", "opacity-100"}`
+    * `:time` - The time to apply the transition from `:transition`.
+      Defaults #{@default_transition_time}
+
+  ## Examples
+
+      <div id="item">My Item</div>
+      <button phx-click={JS.toggle_class("highlight underline", to: "#item")}>
+        toggle highlight!
+      </button>
+  """
+  def toggle_class(names) when is_binary(names), do: toggle_class(%JS{}, names, [])
+
+   @doc "See `toggle_class/1`."
+   def toggle_class(%JS{} = js, names) when is_binary(names) do
+    toggle_class(js, names, [])
+  end
+
+  @doc "See `toggle_class/1`."
+  def toggle_class(names, opts) when is_binary(names) and is_list(opts) do
+    toggle_class(%JS{}, names, opts)
+  end
+
+  @doc "See `toggle_class/1`."
+  def toggle_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
+    opts = validate_keys(opts, :toggle_class, [:to, :transition, :time])
+    time = opts[:time] || @default_transition_time
+
+    put_op(js, "toggle_class", %{
+      to: opts[:to],
+      names: class_names(names),
+      transition: transition_class_names(opts[:transition]),
+      time: time
+    })
+  end
+
   @doc """
   Transitions elements.
 
@@ -554,6 +602,21 @@ defmodule Phoenix.LiveView.JS do
     opts = validate_keys(opts, :remove_attribute, [:to])
     put_op(js, "remove_attr", %{to: opts[:to], attr: attr})
   end
+
+  def toggle_attribute({attr, on_val, off_val}), do: toggle_attribute(%JS{}, {attr, on_val, off_val}, [])
+
+  @doc "See `remove_attribute/1`."
+  def toggle_attribute({attr, on_val, off_val}, opts) when is_list(opts),
+    do: toggle_attribute(%JS{}, {attr, on_val, off_val}, opts)
+
+  def toggle_attribute(%JS{} = js, {attr, on_val, off_val}), do: toggle_attribute(js, {attr, on_val, off_val}, [])
+
+  @doc "See `remove_attribute/1`."
+  def toggle_attribute(%JS{} = js, {attr, on_val, off_val}, opts) when is_list(opts) do
+    opts = validate_keys(opts, :toggle_attribute, [:to])
+    put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, on_val, off_val]})
+  end
+
 
   defp put_op(%JS{ops: ops} = js, kind, %{} = args) do
     %JS{js | ops: ops ++ [[kind, args]]}

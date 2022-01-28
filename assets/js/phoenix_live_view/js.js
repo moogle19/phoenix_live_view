@@ -54,6 +54,10 @@ let JS = {
     this.addOrRemoveClasses(el, [], names, transition, time, view)
   },
 
+  exec_toggle_class(eventType, phxEvent, view, sourceEl, el, {names, transition, time}){
+    this.addOrRemoveClasses(el, names, names, transition, time, view)
+  },
+
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
     let [transition_start, running, transition_end] = transition
     let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(running), [])
@@ -79,6 +83,10 @@ let JS = {
 
   exec_remove_attr(eventType, phxEvent, view, sourceEl, el, {attr}){
     this.setOrRemoveAttrs(el, [], [attr])
+  },
+
+  exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, on_val, off_val]}){
+    this.toggleAttrs(el, [[attr, on_val, off_val]])
   },
 
   // utils for commands
@@ -179,6 +187,31 @@ let JS = {
       newRemoves.forEach(attr => currentEl.removeAttribute(attr))
       newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val))
       return [newSets, newRemoves]
+    })
+  },
+
+  toggleAttrs(el, attrs){
+    let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
+    console.log(prevSets)
+
+    let keepSets = attrs.filter(([attr, _on, _off]) => !this.hasSet(prevSets, attr) && !el.attributes.getNamedItem(attr)).map(([attr, on, _off]) => [attr, on])
+    console.log("Keep Sets: ", keepSets)
+
+    console.log("Attrs: ", attrs)
+    // TODO: Toggle static attrs
+    let toggleSets = prevSets.filter(([attr, _val]) => attrs.findIndex(([att, _on, _off]) => attr == att) >= 0).map(([attr, cur]) => {
+      [attr, on, off] = attrs.find(([att, _on, _off]) => attr == att)
+      if (cur == on) {
+        return [attr, off]
+      } else {
+        return [attr, on]
+      }
+    }).concat(keepSets)
+    console.log("Toggle Sets: ", toggleSets)
+
+    DOM.putSticky(el, "attrs", currentEl => {
+      toggleSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val))
+      return [toggleSets, prevRemoves]
     })
   },
 
