@@ -52,9 +52,11 @@ const DOM = {
   },
 
   childNodeLength(html) {
-    const template = document.createElement("template");
-    template.innerHTML = html;
-    return template.content.childElementCount;
+    if (!this._childNodeLengthTemplate) {
+      this._childNodeLengthTemplate = document.createElement("template");
+    }
+    this._childNodeLengthTemplate.innerHTML = html;
+    return this._childNodeLengthTemplate.content.childElementCount;
   },
 
   isUploadInput(el) {
@@ -166,9 +168,11 @@ const DOM = {
   },
 
   findPhxChildrenInFragment(html, parentId) {
-    const template = document.createElement("template");
-    template.innerHTML = html;
-    return this.findPhxChildren(template.content, parentId);
+    if (!this._findPhxChildrenTemplate) {
+      this._findPhxChildrenTemplate = document.createElement("template");
+    }
+    this._findPhxChildrenTemplate.innerHTML = html;
+    return this.findPhxChildren(this._findPhxChildrenTemplate.content, parentId);
   },
 
   isIgnored(el, phxUpdate) {
@@ -198,24 +202,41 @@ const DOM = {
     // is if a parent adds it back, therefore if a cid does not exist on the page,
     // we should not try to render it by itself (because it would be rendered twice,
     // one by the parent, and a second time by itself)
-    const parentCids = new Set();
+    const parentCids = new Set(cids);
     const childrenCids = new Set();
+    const cidsOnPage = new Set();
 
-    cids.forEach((cid) => {
-      this.all(
-        document,
-        `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
-      ).forEach((parent) => {
-        parentCids.add(cid);
-        this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`)
-          .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)))
-          .forEach((childCID) => childrenCids.add(childCID));
-      });
+    const allComponents = this.all(
+      document,
+      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`
+    );
+
+    const stack = [];
+
+    allComponents.forEach((el) => {
+      const cid = parseInt(el.getAttribute(PHX_COMPONENT));
+      cidsOnPage.add(cid);
+
+      while (stack.length > 0 && !stack[stack.length - 1].el.contains(el)) {
+        stack.pop();
+      }
+
+      if (stack.length > 0 && parentCids.has(stack[stack.length - 1].cid)) {
+        childrenCids.add(cid);
+      }
+
+      if (parentCids.has(cid)) {
+        stack.push({ el, cid });
+      }
     });
 
-    childrenCids.forEach((childCid) => parentCids.delete(childCid));
-
-    return parentCids;
+    const result = new Set();
+    parentCids.forEach((cid) => {
+      if (cidsOnPage.has(cid) && !childrenCids.has(cid)) {
+        result.add(cid);
+      }
+    });
+    return result;
   },
 
   private(el, key) {
