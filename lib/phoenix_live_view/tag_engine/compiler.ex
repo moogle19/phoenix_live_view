@@ -772,7 +772,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   defp decompose_remote_component_tag!(tag_name, tag_meta, state) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
-        size = Enum.sum(Enum.map(rest, &byte_size/1)) + length(rest) + 1
+        size = Enum.sum_by(rest, &byte_size/1) + length(rest) + 1
         aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
         fun = String.to_atom(fun_name)
         %{line: line, column: column} = tag_meta
@@ -968,7 +968,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       end)
 
     acc_assigns =
-      Enum.into(acc_assigns, %{}, fn {key, assigns_ast} ->
+      Map.new(acc_assigns, fn {key, assigns_ast} ->
         cond do
           # No special entry, return it as a list
           not Map.fetch!(specials, key) ->

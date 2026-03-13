@@ -707,7 +707,7 @@ defmodule Phoenix.LiveView.Channel do
       conf = Upload.get_upload_by_ref!(socket, ref)
 
       new_state =
-        if Enum.count(conf.entries) == 1 do
+        if match?([_], conf.entries) do
           drop_upload_name(state, conf.name)
         else
           state
@@ -1381,7 +1381,7 @@ defmodule Phoenix.LiveView.Channel do
     if container = session.redirected? && Route.container(route) do
       {tag, attrs} = container
 
-      attrs = attrs |> resolve_class_attribute_as_list() |> Enum.into(%{})
+      attrs = attrs |> resolve_class_attribute_as_list() |> Map.new()
 
       Map.put(diff, :container, [tag, attrs])
     else
@@ -1559,7 +1559,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp delete_components(state, cids) do
-    upload_cids = Enum.into(state.upload_names, MapSet.new(), fn {_name, {_ref, cid}} -> cid end)
+    upload_cids = MapSet.new(state.upload_names, fn {_name, {_ref, cid}} -> cid end)
 
     Enum.flat_map_reduce(cids, state, fn cid, acc ->
       {deleted_cids, new_components} = Diff.delete_component(cid, acc.components)
@@ -1702,7 +1702,7 @@ defmodule Phoenix.LiveView.Channel do
   defp socket_asyncs(private, cid) do
     case private do
       %{live_async: ref_pids} ->
-        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
+        Map.new(ref_pids, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
 
       %{} ->
         %{}

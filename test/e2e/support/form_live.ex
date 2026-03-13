@@ -72,13 +72,16 @@ for type <- [FormLive, FormLiveNested] do
        socket
        |> assign(
          :params,
-         Enum.into(params, %{
-           "a" => "foo",
-           "b" => "bar",
-           "c" => "baz",
-           "id" => "test-form",
-           "phx-change" => "validate"
-         })
+         Map.merge(
+           %{
+             "a" => "foo",
+             "b" => "bar",
+             "c" => "baz",
+             "id" => "test-form",
+             "phx-change" => "validate"
+           },
+           Map.new(params)
+         )
        )
        |> update_params(params)
        |> assign(:submitted, false)}

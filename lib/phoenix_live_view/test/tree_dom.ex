@@ -372,7 +372,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
   def replace_root_container(container_html, new_tag, attrs) do
     reserved_attrs = ~w(id data-phx-session data-phx-static data-phx-main)
     [{_container_tag, container_attrs_list, children} | _] = container_html
-    container_attrs = Enum.into(container_attrs_list, %{})
+    container_attrs = Map.new(container_attrs_list)
 
     merged_attrs =
       for {attr, value} <- attrs,

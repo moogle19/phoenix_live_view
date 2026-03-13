@@ -83,7 +83,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   def handle_call(:channel_pids, _from, state) do
-    pids = Enum.into(state.entries, %{}, fn {name, entry} -> {name, entry.socket.channel_pid} end)
+    pids = Map.new(state.entries, fn {name, entry} -> {name, entry.socket.channel_pid} end)
     {:reply, pids, state}
   end
 

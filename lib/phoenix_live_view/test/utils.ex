@@ -9,10 +9,10 @@ defmodule Phoenix.LiveViewTest.Utils do
     do: stringify_value(struct, fun)
 
   def stringify(%{} = params, fun),
-    do: Enum.into(params, %{}, &stringify_kv(&1, fun))
+    do: Map.new(params, &stringify_kv(&1, fun))
 
   def stringify([{_, _} | _] = params, fun),
-    do: Enum.into(params, %{}, &stringify_kv(&1, fun))
+    do: Map.new(params, &stringify_kv(&1, fun))
 
   def stringify(params, fun) when is_list(params),
     do: Enum.map(params, &stringify(&1, fun))

@@ -247,7 +247,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   """
   def find_static_views(lazy) do
     all(lazy, "[data-phx-static]")
-    |> Enum.into(%{}, fn node ->
+    |> Map.new(fn node ->
       {attribute(node, "id"), attribute(node, "data-phx-static")}
     end)
   end
@@ -257,7 +257,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   def all_value_inputs({"form", attrs, _} = form, root) do
     form_inputs = filtered_inputs(form)
 
-    case Enum.into(attrs, %{}) do
+    case Map.new(attrs) do
       %{"id" => id} ->
         by_form_id = all(root, ~s<[form="#{id}"]>) |> to_tree()
         named_inputs = filtered_inputs(by_form_id)

@@ -83,14 +83,17 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     size = byte_size(content)
 
     for i <- 1..count do
-      Enum.into(opts, %{
-        last_modified: 1_594_171_879_000,
-        name: "myfile#{i}.jpeg",
-        relative_path: "./myfile#{i}.jpeg",
-        content: content,
-        size: size,
-        type: "image/jpeg"
-      })
+      Map.merge(
+        %{
+          last_modified: 1_594_171_879_000,
+          name: "myfile#{i}.jpeg",
+          relative_path: "./myfile#{i}.jpeg",
+          content: content,
+          size: size,
+          type: "image/jpeg"
+        },
+        Map.new(opts)
+      )
     end
   end
 

@@ -155,7 +155,7 @@ defmodule Phoenix.LiveView.NavigationTest do
       assert [{"article", root_attrs, _}] = TreeDOM.normalize_to_tree(html)
 
       %{"data-phx-session" => thermo_session, "data-phx-static" => thermo_static} =
-        Enum.into(root_attrs, %{})
+        Map.new(root_attrs)
 
       assert {:ok, clock_live, html} = live_redirect(thermo_live, to: "/clock-live-session")
 

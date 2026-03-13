@@ -398,14 +398,16 @@ defmodule Phoenix.LiveView.UploadConfigTest do
   defp build_client_entry(name, attrs \\ %{}) do
     name = "#{name}_#{System.unique_integer([:positive, :monotonic])}"
 
-    attrs
-    |> Enum.into(%{
-      "name" => name,
-      "relative_path" => "./#{name}",
-      "last_modified" => DateTime.utc_now() |> DateTime.to_unix(),
-      "size" => 1024,
-      "type" => "application/octet-stream"
-    })
+    Map.merge(
+      %{
+        "name" => name,
+        "relative_path" => "./#{name}",
+        "last_modified" => DateTime.utc_now() |> DateTime.to_unix(),
+        "size" => 1024,
+        "type" => "application/octet-stream"
+      },
+      Map.new(attrs)
+    )
     |> Map.put_new_lazy("ref", &Phoenix.LiveView.Utils.random_id/0)
   end
 end
