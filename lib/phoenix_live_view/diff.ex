@@ -733,12 +733,7 @@ defmodule Phoenix.LiveView.Diff do
     %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
       Map.fetch!(previous_prints, key)
 
-    vars_changed =
-      Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
-        {key, value}, acc ->
-          Phoenix.Component.assign(acc, key, value)
-      end)
-      |> Map.fetch!(:__changed__)
+    vars_changed = vars_changed(new_vars, previous_vars)
 
     {_counter, child_diff, child_prints, pending, components, template} =
       traverse_dynamic(
@@ -794,6 +789,32 @@ defmodule Phoenix.LiveView.Diff do
     diff = Map.put(diff, index, child_diff)
 
     {diff, index + 1, new_prints, pending, components, template}
+  end
+
+  # The same change tracking Phoenix.Component.assign/3 performs (composite
+  # values keep the previous value for nested tracking), computed directly
+  # instead of assigning every variable into a copy of the previous ones.
+  # This runs for every entry of a changed comprehension, and the variables
+  # of an unchanged entry are usually the very same terms as before.
+  defp vars_changed(vars, vars), do: %{}
+
+  defp vars_changed(new_vars, previous_vars) do
+    :maps.fold(
+      fn key, value, changed ->
+        case previous_vars do
+          %{^key => ^value} ->
+            changed
+
+          %{^key => previous} when is_list(previous) or is_map(previous) or is_tuple(previous) ->
+            Map.put(changed, key, previous)
+
+          %{} ->
+            Map.put(changed, key, true)
+        end
+      end,
+      %{},
+      new_vars
+    )
   end
 
   defp maybe_share_template(map, fingerprint, static, {print_to_pos, pos_to_static}) do
