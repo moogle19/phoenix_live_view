@@ -53,7 +53,7 @@ export default class Rendered {
     const { buffer: str, streams: streams } = this.recursiveToString(
       this.rendered,
       this.rendered[COMPONENTS],
-      onlyCids,
+      onlyCids ? new Set(onlyCids) : null,
       true,
       {},
       null,
@@ -62,7 +62,8 @@ export default class Rendered {
   }
 
   // cid identifies the subtree being rendered to the buffer: null for the root
-  // tree, a component id otherwise.
+  // tree, a component id otherwise. onlyCids is a Set or null; it is built once
+  // per render, as this runs again for every component in the tree.
   recursiveToString(
     rendered,
     components = rendered[COMPONENTS],
@@ -71,7 +72,6 @@ export default class Rendered {
     rootAttrs,
     cid,
   ) {
-    onlyCids = onlyCids ? new Set(onlyCids) : null;
     const bufferClass = this.bufferClass();
     // Only what the class installed right now kept for itself: a class
     // installed since the last merge has nothing of that diff to be handed.
