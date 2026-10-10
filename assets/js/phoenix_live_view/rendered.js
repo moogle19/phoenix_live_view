@@ -215,32 +215,33 @@ export default class Rendered {
 
   // keyed comprehensions
   mergeKeyed(target, source) {
-    // Moves read entries from their old positions. Clone before applying any
-    // entries so an earlier mutation cannot overwrite a position needed later.
-    // Stable-position updates never read from another position.
-    const clonedTarget = source[KEYED][KEYED_MOVED] && this.clone(target);
-    Object.entries(source[KEYED]).forEach(([i, entry]) => {
+    const sourceKeyed = source[KEYED];
+    const targetKeyed = target[KEYED];
+    const moveSources =
+      sourceKeyed[KEYED_MOVED] &&
+      this.takeMoveSources(targetKeyed, sourceKeyed);
+    for (const i in sourceKeyed) {
       if (i === KEYED_COUNT || i === KEYED_MOVED) {
-        return;
+        continue;
       }
+      const entry = sourceKeyed[i];
       if (Array.isArray(entry)) {
         // [old_idx, diff]
         // moved with diff
         const [old_idx, diff] = entry;
-        target[KEYED][i] = clonedTarget[KEYED][old_idx];
-        this.doMutableMerge(target[KEYED][i], diff);
+        targetKeyed[i] = moveSources.get(old_idx);
+        this.doMutableMerge(targetKeyed[i], diff);
       } else if (typeof entry === "number") {
         // moved without diff
-        const old_idx = entry;
-        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        targetKeyed[i] = moveSources.get(entry);
       } else if (typeof entry === "object") {
         // diff, same position
-        if (!target[KEYED][i]) {
-          target[KEYED][i] = {};
+        if (!targetKeyed[i]) {
+          targetKeyed[i] = {};
         }
-        this.doMutableMerge(target[KEYED][i], entry);
+        this.doMutableMerge(targetKeyed[i], entry);
       }
-    });
+    }
     // drop extra entries
     if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
       for (
@@ -258,6 +259,39 @@ export default class Rendered {
     if (source[TEMPLATES]) {
       target[TEMPLATES] = source[TEMPLATES];
     }
+  }
+
+  // Moves read entries from their old positions, so every entry a move reads
+  // is taken before any position is written: writing one could otherwise
+  // overwrite or mutate an entry that a later move still needs.
+  //
+  // Keys are unique (the server raises on duplicates), so each old position
+  // feeds at most one move and its entry is handed over as is, instead of
+  // cloning the whole comprehension. An entry is only cloned when its old
+  // position keeps being merged in place (a new entry taking the slot of one
+  // that moved away), so the merge there cannot reach the entry that moved.
+  takeMoveSources(targetKeyed, sourceKeyed) {
+    const sources = new Map();
+    for (const i in sourceKeyed) {
+      if (i === KEYED_COUNT || i === KEYED_MOVED) {
+        continue;
+      }
+      const entry = sourceKeyed[i];
+      if (Array.isArray(entry)) {
+        sources.set(entry[0], targetKeyed[entry[0]]);
+      } else if (typeof entry === "number") {
+        sources.set(entry, targetKeyed[entry]);
+      }
+    }
+    for (const oldIdx of sources.keys()) {
+      const replacement = sourceKeyed[oldIdx];
+      const isMovedAway =
+        Array.isArray(replacement) || typeof replacement === "number";
+      if (!isMovedAway && oldIdx < sourceKeyed[KEYED_COUNT]) {
+        targetKeyed[oldIdx] = this.clone(targetKeyed[oldIdx]);
+      }
+    }
+    return sources;
   }
 
   // Merges cid trees together, copying statics from source tree.

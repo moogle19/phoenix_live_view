@@ -32,7 +32,7 @@ describe("Rendered", () => {
       expect(deep.get()).toEqual({ ...deepDiffResult, [COMPONENTS]: {} });
     });
 
-    test("clones before moving entries so later moves use pre-merge positions", () => {
+    test("hands moved entries over without cloning, reading pre-merge positions", () => {
       const rendered = new Rendered("123", {
         [KEYED]: {
           0: { 0: "first", 1: "unchanged" },
@@ -55,17 +55,55 @@ describe("Rendered", () => {
         },
       });
 
-      expect(clone).toHaveBeenCalledTimes(1);
-      expect((rendered.get() as any)[KEYED]).toEqual({
+      const after = (rendered.get() as any)[KEYED];
+      expect(clone).not.toHaveBeenCalled();
+      expect(after).toEqual({
         0: { 0: "second", 1: "updated" },
         1: { 0: "first", 1: "unchanged" },
         [KEYED_COUNT]: 2,
       });
-      expect(first).toEqual({ 0: "first", 1: "unchanged" });
-      expect(second).toEqual({ 0: "second", 1: "old" });
+      expect(after[0]).toBe(second);
+      expect(after[1]).toBe(first);
     });
 
-    test("clones only a moved nested keyed subtree", () => {
+    test("copies an entry whose slot is filled in place after it moved away", () => {
+      const rendered = new Rendered("123", {
+        [KEYED]: {
+          0: { 0: "first", 1: { 0: "a", [STATIC]: ["<b>", "</b>"] } },
+          1: { 0: "second", 1: { 0: "b", [STATIC]: ["<b>", "</b>"] } },
+          [KEYED_COUNT]: 2,
+        },
+        [STATIC]: ["", "", ""],
+      });
+      const first = (rendered.get() as any)[KEYED][0];
+      const clone = jest.spyOn(rendered, "clone");
+
+      // a new entry is inserted at the top: the old entries move down one
+      // position and the new one is merged into the slot "first" left behind
+      rendered.mergeDiff({
+        [KEYED]: {
+          0: { 0: "new", 1: { 0: "n" } },
+          1: 0,
+          2: 1,
+          [KEYED_COUNT]: 3,
+          [KEYED_MOVED]: true,
+        },
+      });
+
+      const after = (rendered.get() as any)[KEYED];
+      expect(clone).toHaveBeenCalledTimes(1);
+      expect(after[1]).toBe(first);
+      expect(after[0]).not.toBe(first);
+      expect(after[0][1]).not.toBe(first[1]);
+      expect(after).toEqual({
+        0: { 0: "new", 1: { 0: "n", [STATIC]: ["<b>", "</b>"] } },
+        1: { 0: "first", 1: { 0: "a", [STATIC]: ["<b>", "</b>"] } },
+        2: { 0: "second", 1: { 0: "b", [STATIC]: ["<b>", "</b>"] } },
+        [KEYED_COUNT]: 3,
+      });
+    });
+
+    test("moves nested keyed entries without cloning the parent", () => {
       const rendered = new Rendered("123", {
         [KEYED]: {
           0: {
@@ -103,8 +141,7 @@ describe("Rendered", () => {
         },
       });
 
-      expect(clone).toHaveBeenCalledTimes(1);
-      expect(clone.mock.calls[0][0]).toBe(nested);
+      expect(clone).not.toHaveBeenCalled();
       expect((rendered.get() as any)[KEYED][0]).toBe(outer);
       expect(nested[KEYED]).toEqual({
         0: { 0: "second" },
