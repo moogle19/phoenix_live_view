@@ -782,17 +782,23 @@ export default class DOMPatch {
 
   private maybeLimitStream(el) {
     const { limit } = this.getStreamInsert(el);
-    if (limit !== null) {
-      const children = Array.from(el.parentElement.children);
-      if (limit < 0 && children.length > limit * -1) {
-        children
-          .slice(0, children.length + limit)
-          .forEach((child) => this.removeStreamChildElement(child));
-      } else if (limit >= 0 && children.length > limit) {
-        children
-          .slice(limit)
-          .forEach((child) => this.removeStreamChildElement(child));
-      }
+    // This runs for every inserted stream item, so the children are only
+    // collected once the container is actually over the limit.
+    if (
+      typeof limit !== "number" ||
+      el.parentElement.childElementCount <= Math.abs(limit)
+    ) {
+      return;
+    }
+    const children = Array.from(el.parentElement.children);
+    if (limit < 0) {
+      children
+        .slice(0, children.length + limit)
+        .forEach((child) => this.removeStreamChildElement(child));
+    } else {
+      children
+        .slice(limit)
+        .forEach((child) => this.removeStreamChildElement(child));
     }
   }
 
