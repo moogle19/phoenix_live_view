@@ -1039,6 +1039,17 @@ export default class View {
   addHook(el) {
     const hookElId = ViewHook.elementID(el);
 
+    // This runs for every element a patch adds, and almost none of them have a
+    // hook, so rule those out before the ownership check walks up the DOM.
+    if (
+      !hookElId &&
+      (!el.getAttribute ||
+        (!el.getAttribute(`data-phx-${PHX_HOOK}`) &&
+          !el.getAttribute(this.binding(PHX_HOOK))))
+    ) {
+      return;
+    }
+
     // only ever try to add hooks to elements owned by this view
     if (el.getAttribute && !this.ownsElement(el)) {
       return;
