@@ -245,6 +245,31 @@ describe("DOM", () => {
       );
     });
 
+    test("treats cids nested through components outside of cids as children", () => {
+      const view = tag("div", {}, "");
+      document.body.appendChild(view);
+
+      view.appendChild(
+        tag(
+          "div",
+          { "data-phx-component": 4, "data-phx-view": "bar" },
+          `
+        <div data-phx-component="5" data-phx-view="bar">
+          <div data-phx-component="6" data-phx-view="bar"></div>
+        </div>
+      `,
+        ),
+      );
+      view.appendChild(
+        tag("div", { "data-phx-component": 7, "data-phx-view": "bar" }, ""),
+      );
+
+      expect(DOM.findExistingParentCIDs("bar", [7, 6, 4, 8])).toEqual(
+        new Set([7, 4]),
+      );
+      expect([...DOM.findExistingParentCIDs("bar", [7, 6, 4])]).toEqual([7, 4]);
+    });
+
     test("ignores elements in child LiveViews #3626", () => {
       const view = tag(
         "div",

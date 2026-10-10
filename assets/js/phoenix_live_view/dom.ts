@@ -241,24 +241,44 @@ const DOM = {
     // is if a parent adds it back, therefore if a cid does not exist on the page,
     // we should not try to render it by itself (because it would be rendered twice,
     // one by the parent, and a second time by itself)
-    const parentCids = new Set();
-    const childrenCids = new Set();
+    //
+    // A cid is nested when any component of this view above it is also in
+    // cids, as rendering that one renders it too. The candidates are collected
+    // with a single query and nesting is found by walking up from each match,
+    // rather than querying the document once per cid. A single cid only needs
+    // its own elements, so the query is narrowed to those.
+    const selector = `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`;
+    const candidates =
+      cids.length === 1
+        ? `${selector}[${PHX_COMPONENT}="${cids[0]}"]`
+        : selector;
+    const cidOf = (el: Element) => parseInt(el.getAttribute(PHX_COMPONENT)!);
+    const wanted = new Set(cids.map((cid) => parseInt(cid)));
+    const existing = new Set<number>();
+    const nested = new Set<number>();
 
-    cids.forEach((cid) => {
-      this.all(
-        document,
-        `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
-      ).forEach((parent) => {
-        parentCids.add(cid);
-        this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`)
-          .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)!))
-          .forEach((childCID) => childrenCids.add(childCID));
-      });
+    this.all(document, candidates, (el) => {
+      const cid = cidOf(el);
+      if (!wanted.has(cid)) {
+        return;
+      }
+      existing.add(cid);
+      let ancestor = el.parentElement?.closest(selector);
+      while (ancestor) {
+        if (wanted.has(cidOf(ancestor))) {
+          nested.add(cid);
+          return;
+        }
+        ancestor = ancestor.parentElement?.closest(selector);
+      }
     });
 
-    childrenCids.forEach((childCid) => parentCids.delete(childCid));
-
-    return parentCids;
+    return new Set(
+      cids.filter((cid) => {
+        const n = parseInt(cid);
+        return existing.has(n) && !nested.has(n);
+      }),
+    );
   },
 
   private(el, key) {
