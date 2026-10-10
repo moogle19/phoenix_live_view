@@ -939,7 +939,7 @@ defmodule Phoenix.LiveView.Diff do
     {new_pending, diffs, components} =
       render_component(socket, component, id, prints, cid, new?, cids, diffs, components)
 
-    pending = Map.merge(pending, new_pending, fn _, v1, v2 -> v2 ++ v1 end)
+    pending = merge_pending(pending, new_pending)
     zip_components(sockets, metadata, component, cids, {pending, diffs, components})
   end
 
@@ -951,6 +951,13 @@ defmodule Phoenix.LiveView.Diff do
     raise "#{inspect(component)}.update_many/1 must return a list of Phoenix.LiveView.Socket " <>
             "of the same length as the input list, got mismatched return type"
   end
+
+  # Most components render no nested components, and merging with a
+  # function walks the smaller map even when it is empty.
+  defp merge_pending(pending, new_pending) when map_size(new_pending) == 0, do: pending
+
+  defp merge_pending(pending, new_pending),
+    do: Map.merge(pending, new_pending, fn _, v1, v2 -> v2 ++ v1 end)
 
   defp maybe_preload_components(component, entries) do
     if function_exported?(component, :preload, 1) do
